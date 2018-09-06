@@ -4,7 +4,8 @@ import os
 import json
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.model_selection import train_test_split
-import keras_preprocessing as KPImage
+import keras
+import keras_preprocessing.image as KPImage
 from PIL import Image
 import pydicom
 from keras.applications.resnet50 import ResNet50 as PTModel, preprocess_input
@@ -59,7 +60,7 @@ img_gen_params = dict(horizontal_flip=True,
                       zoom_range=0.05,
                       preprocessing_function=preprocess_input
                       )
-img_gen = KPImage.image.ImageDataGenerator(**img_gen_params)
+img_gen = KPImage.ImageDataGenerator(**img_gen_params)
 
 
 def flow_from_dataframe(img_data_gen, in_df, path_col, y_col,
