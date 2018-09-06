@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 import json
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.model_selection import train_test_split
@@ -17,10 +18,12 @@ with open('params.json') as f:
 class_enc = LabelEncoder()
 image_bbox_df['class_idx'] = class_enc.fit_transform(image_bbox_df['class'])
 oh_enc = OneHotEncoder(sparse=False)
-image_bbox_df['class_vec'] = oh_enc.fit_transform(image_bbox_df['class_idx'].values.reshape(-1, 1)).tolist()
+image_bbox_df['class_vec'] = oh_enc.fit_transform(image_bbox_df['class_idx']. \
+                                                  values.reshape(-1, 1)).tolist()
 
 # Create train/validation dsets
-train_df, val_df = train_test_split(image_bbox_df, stratify=image_bbox_df['class_idx'])
+train_df, val_df = train_test_split(image_bbox_df,
+                                    stratify=image_bbox_df['class_idx'])
 
 # Balance training data
 train_df = train_df.groupby('class_idx'). \
@@ -57,3 +60,44 @@ img_gen_params = dict(horizontal_flip=True,
                       preprocessing_function=preprocess_input
                       )
 img_gen = KPImage.image.ImageDataGenerator(**img_gen_params)
+
+
+def flow_from_dataframe(img_data_gen, in_df, path_col, y_col,
+                        seed=None, **dflow_args):
+    base_dir = os.path.dirname(in_df[path_col].values[0])
+    df_gen = img_data_gen.flow_from_directory(base_dir,
+                                              class_mode='sparse',
+                                              seed=seed,
+                                              **dflow_args)
+    df_gen.filenames = in_df[path_col].values
+    df_gen.classes = np.stack(in_df[y_col].values, 0)
+    df_gen.samples = in_df.shape[0]
+    df_gen.n = in_df.shape[0]
+    df_gen._set_index_array()
+    df_gen.directory = ''  # since we have the full path
+    print('Reinserting dataframe: {} images'.format(in_df.shape[0]))
+    return df_gen
+
+#For training
+train_gen = flow_from_dataframe(img_gen, train_df,
+                                path_col='path',
+                                y_col='class_vec',
+                                target_size=params['IMG_SIZE'],
+                                color_mode='rgb',
+                                batch_size=params['BATCH_SIZE'])
+#For validation
+val_gen = flow_from_dataframe(img_gen, val_df,
+                              path_col='path',
+                              y_col='class_vec',
+                              target_size=params['IMG_SIZE'],
+                              color_mode='rgb',
+                              batch_size=256)
+#For test
+valid_X, valid_Y = next(flow_from_dataframe(img_gen, val_df,
+                                            path_col='path',
+                                            y_col='class_vec',
+                                            target_size=params['IMG_SIZE'],
+                                            color_mode='rgb',
+                                            batch_size=params['TEST_SIZE']))
+
+
