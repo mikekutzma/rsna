@@ -9,6 +9,7 @@ import keras_preprocessing.image as KPImage
 from PIL import Image
 import pydicom
 from keras.applications.resnet50 import ResNet50 as PTModel, preprocess_input
+from keras.layers import Input
 
 # Load data 
 image_bbox_df = pd.read_csv('./input/stage_1_image_bbox_full.csv')
@@ -52,6 +53,7 @@ class MedicalPIL:
 
 KPImage.pil_image = MedicalPIL
 
+# Prepare datasets
 img_gen_params = dict(horizontal_flip=True,
                       height_shift_range=0.05,
                       width_shift_range=0.02,
@@ -102,3 +104,11 @@ valid_X, valid_Y = next(flow_from_dataframe(img_gen, val_df,
                                             batch_size=params['TEST_SIZE']))
 
 
+# Build model
+t_x, t_y = next(train_gen)
+
+#Base
+base_model = PTModel(input_shape=t_x.shape[1:],include_top=False)
+base_model.trainable = False
+
+#
